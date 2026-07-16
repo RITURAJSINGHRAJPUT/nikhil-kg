@@ -879,6 +879,9 @@
                 </div>
             </div>
             <div class="header-actions">
+                <button class="btn btn-outline" onclick="openGithubSettings()" title="Configure GitHub Sync">
+                    <i data-lucide="settings"></i> GitHub Sync
+                </button>
                 <button class="btn btn-primary" onclick="openAddModal()">
                     <i data-lucide="plus"></i> Add Machine
                 </button>
@@ -1023,6 +1026,41 @@
             <div class="modal-footer">
                 <button class="btn btn-outline" onclick="closeModal('machine-modal')">Cancel</button>
                 <button class="btn btn-accent" onclick="saveMachine()">Save Machine</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== GITHUB SETTINGS MODAL ==================== -->
+    <div class="modal-overlay" id="github-settings-modal">
+        <div class="modal-card" style="max-width: 420px;">
+            <div class="modal-header">
+                <h3>GitHub Sync Settings</h3>
+                <button class="modal-close" onclick="closeModal('github-settings-modal')">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.5rem; line-height: 1.4;">
+                    Configure GitHub Sync to automatically commit uploaded photos and database changes directly to your repository.
+                </p>
+                <div class="form-group" style="margin-bottom: 0.75rem;">
+                    <label for="gh-username">GitHub Username / Organization</label>
+                    <input type="text" id="gh-username" class="form-input" placeholder="e.g. RITURAJSINGHRAJPUT">
+                </div>
+                <div class="form-group" style="margin-bottom: 0.75rem;">
+                    <label for="gh-repo">Repository Name</label>
+                    <input type="text" id="gh-repo" class="form-input" placeholder="e.g. nikhil-kg">
+                </div>
+                <div class="form-group" style="margin-bottom: 0.75rem;">
+                    <label for="gh-branch">Branch</label>
+                    <input type="text" id="gh-branch" class="form-input" value="main">
+                </div>
+                <div class="form-group" style="margin-bottom: 0.75rem;">
+                    <label for="gh-token">Personal Access Token (classic or fine-grained)</label>
+                    <input type="password" id="gh-token" class="form-input" placeholder="ghp_xxxxxxxxxxxxxxxxxxxx">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-outline" onclick="closeModal('github-settings-modal')">Cancel</button>
+                <button class="btn btn-accent" onclick="saveGithubSettings()">Save Settings</button>
             </div>
         </div>
     </div>
@@ -2663,9 +2701,34 @@
         // Live state loaded from localStorage or fallback to initialMachines
         let machines = [];
         let currentCategory = 'All';
+        let ghSettings = null;
 
-        // Load custom database
-        function initDB() {
+        // Load GitHub Integration settings
+        function loadGithubSettings() {
+            const stored = localStorage.getItem('bookends_gh_settings');
+            if (stored) {
+                try {
+                    ghSettings = JSON.parse(stored);
+                } catch(e) {}
+            }
+        }
+
+        // Fetch live machines.json from server first
+        async function initDB() {
+            try {
+                const response = await fetch('machines.json');
+                if (response.ok) {
+                    const freshData = await response.json();
+                    if (Array.isArray(freshData) && freshData.length > 0) {
+                        machines = freshData;
+                        saveToLocalStorage();
+                        return;
+                    }
+                }
+            } catch(e) {
+                console.log("Could not load machines.json dynamically. Using local cache/fallback.");
+            }
+
             const stored = localStorage.getItem('bookends_machines');
             if (stored) {
                 try {
@@ -2683,9 +2746,77 @@
             localStorage.setItem('bookends_machines', JSON.stringify(machines));
         }
 
+        // Commit files to GitHub directly using REST API
+        async function commitToGithub(path, base64Content, commitMessage) {
+            if (!ghSettings || !ghSettings.token || !ghSettings.username || !ghSettings.repo) {
+                console.log("GitHub Sync settings are incomplete.");
+                return null;
+            }
+
+            const url = `https://api.github.com/repos/${ghSettings.username}/${ghSettings.repo}/contents/${path}`;
+            const headers = {
+                "Authorization": `token ${ghSettings.token}`,
+                "Content-Type": "application/json"
+            };
+
+            let sha = null;
+            // Check if file already exists to get its SHA for update
+            try {
+                const res = await fetch(url + `?ref=${ghSettings.branch || 'main'}`, { headers });
+                if (res.ok) {
+                    const data = await res.json();
+                    sha = data.sha;
+                }
+            } catch(e) {}
+
+            const body = {
+                message: commitMessage,
+                content: base64Content,
+                branch: ghSettings.branch || 'main'
+            };
+            if (sha) body.sha = sha;
+
+            const putRes = await fetch(url, {
+                method: 'PUT',
+                headers: headers,
+                body: JSON.stringify(body)
+            });
+
+            if (!putRes.ok) {
+                const err = await putRes.json();
+                throw new Error(err.message || 'Failed to sync with GitHub');
+            }
+            return await putRes.json();
+        }
+
+        // GitHub settings Modal controls
+        function openGithubSettings() {
+            loadGithubSettings();
+            if (ghSettings) {
+                document.getElementById('gh-username').value = ghSettings.username || '';
+                document.getElementById('gh-repo').value = ghSettings.repo || '';
+                document.getElementById('gh-branch').value = ghSettings.branch || 'main';
+                document.getElementById('gh-token').value = ghSettings.token || '';
+            }
+            document.getElementById('github-settings-modal').style.display = 'flex';
+        }
+
+        function saveGithubSettings() {
+            const username = document.getElementById('gh-username').value.trim();
+            const repo = document.getElementById('gh-repo').value.trim();
+            const branch = document.getElementById('gh-branch').value.trim() || 'main';
+            const token = document.getElementById('gh-token').value.trim();
+
+            ghSettings = { username, repo, branch, token };
+            localStorage.setItem('bookends_gh_settings', JSON.stringify(ghSettings));
+            closeModal('github-settings-modal');
+            alert('GitHub settings saved! Auto-sync is active.');
+        }
+
         // Check URL for Mobile Card mode
-        window.addEventListener('DOMContentLoaded', () => {
-            initDB();
+        window.addEventListener('DOMContentLoaded', async () => {
+            loadGithubSettings();
+            await initDB();
             lucide.createIcons();
 
             const urlParams = new URLSearchParams(window.location.search);
@@ -3160,34 +3291,83 @@
             const urlInputVal = document.getElementById('form-image-url').value.trim();
             const previewSrc = document.getElementById('modal-image-preview').src;
 
-            if (urlInputVal) {
-                machineObj.image = urlInputVal;
-            } else if (previewSrc && previewSrc.startsWith('data:image')) {
-                machineObj.image = previewSrc;
-            } else if (editCode) {
-                // reuse existing image if editing
-                const existing = machines.find(x => x.id === editCode);
-                if (existing && existing.image) machineObj.image = existing.image;
-            }
+            // Show a saving loader
+            const saveBtn = document.querySelector('#machine-modal .btn-accent');
+            const originalBtnText = saveBtn.textContent;
+            saveBtn.disabled = true;
+            saveBtn.textContent = 'Saving & Syncing...';
 
-            if (editCode) {
-                // Update
-                const idx = machines.findIndex(x => x.id === editCode);
-                if (idx !== -1) {
-                    machines[idx] = machineObj;
-                }
-            } else {
-                // Add new (verify duplicate code first)
-                if (machines.some(x => x.id.toUpperCase() === code.toUpperCase())) {
-                    alert(`A machine with code "${code}" already exists.`);
-                    return;
-                }
-                machines.unshift(machineObj);
-            }
+            // We use an async self-invoking function block to handle promises
+            (async () => {
+                try {
+                    if (urlInputVal) {
+                        machineObj.image = urlInputVal;
+                    } else if (previewSrc && previewSrc.startsWith('data:image')) {
+                        // It's a new uploaded file
+                        if (ghSettings && ghSettings.token && ghSettings.username && ghSettings.repo) {
+                            // Upload directly to GitHub images/ folder!
+                            const parts = previewSrc.split(',');
+                            const ext = previewSrc.split(';')[0].split('/')[1] || 'jpg';
+                            const imagePath = `images/${code}.${ext}`;
+                            const rawBase64 = parts[1];
 
-            saveToLocalStorage();
-            closeModal('machine-modal');
-            renderGrid();
+                            await commitToGithub(imagePath, rawBase64, `Upload photo for ${code}`);
+                            // Reference it relatively in the dataset
+                            machineObj.image = `./images/${code}.${ext}`;
+                        } else {
+                            // Fallback to storing in local storage
+                            machineObj.image = previewSrc;
+                        }
+                    } else if (editCode) {
+                        // reuse existing image if editing
+                        const existing = machines.find(x => x.id === editCode);
+                        if (existing && existing.image) machineObj.image = existing.image;
+                    }
+
+                    if (editCode) {
+                        // Update
+                        const idx = machines.findIndex(x => x.id === editCode);
+                        if (idx !== -1) {
+                            machines[idx] = machineObj;
+                        }
+                    } else {
+                        // Add new (verify duplicate code first)
+                        if (machines.some(x => x.id.toUpperCase() === code.toUpperCase())) {
+                            alert(`A machine with code "${code}" already exists.`);
+                            saveBtn.disabled = false;
+                            saveBtn.textContent = originalBtnText;
+                            return;
+                        }
+                        machines.unshift(machineObj);
+                    }
+
+                    saveToLocalStorage();
+
+                    // Sync the machines.json database to GitHub!
+                    if (ghSettings && ghSettings.token && ghSettings.username && ghSettings.repo) {
+                        const dbStr = JSON.stringify(machines, null, 2);
+                        // Safe base64 encoding supporting utf-8 characters
+                        const encodedData = btoa(unescape(encodeURIComponent(dbStr)));
+                        await commitToGithub('machines.json', encodedData, `Update database entry for ${code}`);
+                        alert('Machine saved and synced to GitHub successfully!');
+                    } else {
+                        alert('Machine saved locally. Configure GitHub Sync in settings to commit changes to git.');
+                    }
+
+                    closeModal('machine-modal');
+                    renderGrid();
+                } catch (err) {
+                    console.error(err);
+                    alert('Error syncing to GitHub: ' + err.message + '
+
+Your changes were saved locally.');
+                    closeModal('machine-modal');
+                    renderGrid();
+                } finally {
+                    saveBtn.disabled = false;
+                    saveBtn.textContent = originalBtnText;
+                }
+            })();
         }
 
         function deleteMachine(code) {
