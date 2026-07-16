@@ -1015,7 +1015,7 @@ def build():
 
                 <div class="form-group">
                     <label>Machine Photo</label>
-                    <div class="image-preview-box" id="modal-image-preview-box">
+                    <div class="image-preview-box" id="modal-image-preview-box" style="margin-bottom: 0.5rem;">
                         <div class="image-placeholder" id="modal-image-placeholder">
                             <i data-lucide="image"></i>
                             <span>Click to upload image</span>
@@ -1023,6 +1023,11 @@ def build():
                         <img id="modal-image-preview" src="" style="display:none;">
                     </div>
                     <input type="file" id="form-image-file" accept="image/*" style="display:none;" onchange="handleImageUpload(event)">
+                </div>
+
+                <div class="form-group">
+                    <label for="form-image-url">Or paste Machine Photo URL (e.g. GitHub link)</label>
+                    <input type="text" id="form-image-url" class="form-input" placeholder="Paste direct image URL (https://...)" oninput="handleImageUrlInput()">
                 </div>
             </div>
             <div class="modal-footer">
@@ -1366,6 +1371,7 @@ def build():
             document.getElementById('modal-image-preview').style.display = 'none';
             document.getElementById('modal-image-placeholder').style.display = 'flex';
             document.getElementById('form-image-file').value = '';
+            document.getElementById('form-image-url').value = '';
             
             // suggest code
             suggestNextCode();
@@ -1457,10 +1463,16 @@ def build():
                 preview.src = m.image;
                 preview.style.display = 'block';
                 placeholder.style.display = 'none';
+                if (!m.image.startsWith('data:image')) {{
+                    document.getElementById('form-image-url').value = m.image;
+                }} else {{
+                    document.getElementById('form-image-url').value = '';
+                }}
             }} else {{
                 preview.src = '';
                 preview.style.display = 'none';
                 placeholder.style.display = 'flex';
+                document.getElementById('form-image-url').value = '';
             }}
 
             document.getElementById('machine-modal').style.display = 'flex';
@@ -1485,8 +1497,28 @@ def build():
                 preview.src = base64Image;
                 preview.style.display = 'block';
                 placeholder.style.display = 'none';
+                // Clear URL input if file is uploaded
+                document.getElementById('form-image-url').value = '';
             }};
             reader.readAsDataURL(file);
+        }}
+
+        function handleImageUrlInput() {{
+            const url = document.getElementById('form-image-url').value.trim();
+            const preview = document.getElementById('modal-image-preview');
+            const placeholder = document.getElementById('modal-image-placeholder');
+
+            if (url) {{
+                preview.src = url;
+                preview.style.display = 'block';
+                placeholder.style.display = 'none';
+                // Clear file input if URL is pasted
+                document.getElementById('form-image-file').value = '';
+            }} else {{
+                preview.src = '';
+                preview.style.display = 'none';
+                placeholder.style.display = 'flex';
+            }}
         }}
 
         function saveMachine() {{
@@ -1528,9 +1560,13 @@ def build():
                 machineObj.details = `Remark: ${{dateVal || '-'}}`;
             }}
 
-            // Retain/apply base64 image
+            // Retain/apply base64 image or URL
+            const urlInputVal = document.getElementById('form-image-url').value.trim();
             const previewSrc = document.getElementById('modal-image-preview').src;
-            if (previewSrc && previewSrc.startsWith('data:image')) {{
+
+            if (urlInputVal) {{
+                machineObj.image = urlInputVal;
+            }} else if (previewSrc && previewSrc.startsWith('data:image')) {{
                 machineObj.image = previewSrc;
             }} else if (editCode) {{
                 // reuse existing image if editing
