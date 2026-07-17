@@ -1,10 +1,36 @@
 import json
 import os
+import re
 
 def build():
     # Read the parsed machines data
     with open('machines.json', 'r', encoding='utf-8') as f:
         machines = json.load(f)
+        
+    # Scan the images directory for matching images
+    image_mapping = {}
+    if os.path.exists('images'):
+        for f_name in os.listdir('images'):
+            if f_name.startswith('.'):
+                continue
+            # Match pattern like SUR-BKY-001 or SUR-PRP-002 (case-insensitive)
+            match = re.search(r'(SUR-[A-Z]+-\d+)', f_name, re.IGNORECASE)
+            if match:
+                machine_id = match.group(1).upper()
+                path = f"images/{f_name}"
+                # If there are duplicates, prefer the one without 'copy' in the filename
+                if machine_id not in image_mapping or "copy" not in f_name.lower():
+                    image_mapping[machine_id] = path
+
+    # Assign image paths to machines
+    for machine in machines:
+        m_id = machine.get('id')
+        if m_id in image_mapping:
+            machine['image'] = image_mapping[m_id]
+
+    # Save the updated machines back to machines.json to keep it updated
+    with open('machines.json', 'w', encoding='utf-8') as f:
+        json.dump(machines, f, indent=2, ensure_ascii=False)
         
     machines_js = json.dumps(machines, indent=2, ensure_ascii=False)
     
@@ -889,9 +915,6 @@ def build():
                 </div>
             </div>
             <div class="header-actions">
-                <button class="btn btn-outline" onclick="openGithubSettings()" title="Configure GitHub Sync">
-                    <i data-lucide="settings"></i> GitHub Sync
-                </button>
                 <button class="btn btn-primary" onclick="openAddModal()">
                     <i data-lucide="plus"></i> Add Machine
                 </button>
@@ -1040,41 +1063,6 @@ def build():
         </div>
     </div>
 
-    <!-- ==================== GITHUB SETTINGS MODAL ==================== -->
-    <div class="modal-overlay" id="github-settings-modal">
-        <div class="modal-card" style="max-width: 420px;">
-            <div class="modal-header">
-                <h3>GitHub Sync Settings</h3>
-                <button class="modal-close" onclick="closeModal('github-settings-modal')">&times;</button>
-            </div>
-            <div class="modal-body">
-                <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.5rem; line-height: 1.4;">
-                    Configure GitHub Sync to automatically commit uploaded photos and database changes directly to your repository.
-                </p>
-                <div class="form-group" style="margin-bottom: 0.75rem;">
-                    <label for="gh-username">GitHub Username / Organization</label>
-                    <input type="text" id="gh-username" class="form-input" placeholder="e.g. RITURAJSINGHRAJPUT">
-                </div>
-                <div class="form-group" style="margin-bottom: 0.75rem;">
-                    <label for="gh-repo">Repository Name</label>
-                    <input type="text" id="gh-repo" class="form-input" placeholder="e.g. nikhil-kg">
-                </div>
-                <div class="form-group" style="margin-bottom: 0.75rem;">
-                    <label for="gh-branch">Branch</label>
-                    <input type="text" id="gh-branch" class="form-input" value="main">
-                </div>
-                <div class="form-group" style="margin-bottom: 0.75rem;">
-                    <label for="gh-token">Personal Access Token (classic or fine-grained)</label>
-                    <input type="password" id="gh-token" class="form-input" placeholder="ghp_xxxxxxxxxxxxxxxxxxxx">
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button class="btn btn-outline" onclick="closeModal('github-settings-modal')">Cancel</button>
-                <button class="btn btn-accent" onclick="saveGithubSettings()">Save Settings</button>
-            </div>
-        </div>
-    </div>
-
     <!-- ==================== QR VIEW MODAL ==================== -->
     <div class="modal-overlay" id="qr-modal">
         <div class="modal-card" style="max-width: 380px;">
@@ -1105,26 +1093,58 @@ def build():
         // Live state loaded from localStorage or fallback to initialMachines
         let machines = [];
         let currentCategory = 'All';
-        let ghSettings = null;
 
-        // Load GitHub Integration settings
-        function loadGithubSettings() {{
-            const stored = localStorage.getItem('bookends_gh_settings');
-            if (stored) {{
-                try {{
-                    ghSettings = JSON.parse(stored);
-                }} catch(e) {{}}
+        function mergeMachines(sourceList) {{
+            const stored = localStorage.getItem('bookends_machines');
+            if (!stored) {{
+                return [...sourceList];
+            }}
+            try {{
+                const localMachines = JSON.parse(stored);
+                const localMap = {{}};
+                localMachines.forEach(m => {{
+                    localMap[m.id] = m;
+                }});
+                
+                const merged = [];
+                sourceList.forEach(srcM => {{
+                    const localM = localMap[srcM.id];
+                    if (localM) {{
+                        // Merge: keep local edits but update/fallback to source properties
+                        const mergedM = {{ ...srcM, ...localM }};
+                        // If the local entry doesn't have an image but the source entry does, take it
+                        if (!localM.image && srcM.image) {{
+                            mergedM.image = srcM.image;
+                        }}
+                        merged.push(mergedM);
+                    }} else {{
+                        // New machine from source
+                        merged.push(srcM);
+                    }}
+                }});
+                
+                // Keep any custom machines added locally (not in source list)
+                const sourceIds = new Set(sourceList.map(m => m.id));
+                localMachines.forEach(localM => {{
+                    if (!sourceIds.has(localM.id)) {{
+                        merged.push(localM);
+                    }}
+                }});
+                
+                return merged;
+            }} catch(e) {{
+                return [...sourceList];
             }}
         }}
 
         // Fetch live machines.json from server first
         async function initDB() {{
             try {{
-                const response = await fetch('machines.json');
+                const response = await fetch('machines.json?v=' + Date.now());
                 if (response.ok) {{
                     const freshData = await response.json();
                     if (Array.isArray(freshData) && freshData.length > 0) {{
-                        machines = freshData;
+                        machines = mergeMachines(freshData);
                         saveToLocalStorage();
                         return;
                     }}
@@ -1133,93 +1153,16 @@ def build():
                 console.log("Could not load machines.json dynamically. Using local cache/fallback.");
             }}
 
-            const stored = localStorage.getItem('bookends_machines');
-            if (stored) {{
-                try {{
-                    machines = JSON.parse(stored);
-                }} catch(e) {{
-                    machines = [...initialMachines];
-                }}
-            }} else {{
-                machines = [...initialMachines];
-                saveToLocalStorage();
-            }}
+            machines = mergeMachines(initialMachines);
+            saveToLocalStorage();
         }}
 
         function saveToLocalStorage() {{
             localStorage.setItem('bookends_machines', JSON.stringify(machines));
         }}
 
-        // Commit files to GitHub directly using REST API
-        async function commitToGithub(path, base64Content, commitMessage) {{
-            if (!ghSettings || !ghSettings.token || !ghSettings.username || !ghSettings.repo) {{
-                console.log("GitHub Sync settings are incomplete.");
-                return null;
-            }}
-
-            const url = `https://api.github.com/repos/${{ghSettings.username}}/${{ghSettings.repo}}/contents/${{path}}`;
-            const headers = {{
-                "Authorization": `token ${{ghSettings.token}}`,
-                "Content-Type": "application/json"
-            }};
-
-            let sha = null;
-            // Check if file already exists to get its SHA for update
-            try {{
-                const res = await fetch(url + `?ref=${{ghSettings.branch || 'main'}}`, {{ headers }});
-                if (res.ok) {{
-                    const data = await res.json();
-                    sha = data.sha;
-                }}
-            }} catch(e) {{}}
-
-            const body = {{
-                message: commitMessage,
-                content: base64Content,
-                branch: ghSettings.branch || 'main'
-            }};
-            if (sha) body.sha = sha;
-
-            const putRes = await fetch(url, {{
-                method: 'PUT',
-                headers: headers,
-                body: JSON.stringify(body)
-            }});
-
-            if (!putRes.ok) {{
-                const err = await putRes.json();
-                throw new Error(err.message || 'Failed to sync with GitHub');
-            }}
-            return await putRes.json();
-        }}
-
-        // GitHub settings Modal controls
-        function openGithubSettings() {{
-            loadGithubSettings();
-            if (ghSettings) {{
-                document.getElementById('gh-username').value = ghSettings.username || '';
-                document.getElementById('gh-repo').value = ghSettings.repo || '';
-                document.getElementById('gh-branch').value = ghSettings.branch || 'main';
-                document.getElementById('gh-token').value = ghSettings.token || '';
-            }}
-            document.getElementById('github-settings-modal').style.display = 'flex';
-        }}
-
-        function saveGithubSettings() {{
-            const username = document.getElementById('gh-username').value.trim();
-            const repo = document.getElementById('gh-repo').value.trim();
-            const branch = document.getElementById('gh-branch').value.trim() || 'main';
-            const token = document.getElementById('gh-token').value.trim();
-
-            ghSettings = {{ username, repo, branch, token }};
-            localStorage.setItem('bookends_gh_settings', JSON.stringify(ghSettings));
-            closeModal('github-settings-modal');
-            alert('GitHub settings saved! Auto-sync is active.');
-        }}
-
         // Check URL for Mobile Card mode
         window.addEventListener('DOMContentLoaded', async () => {{
-            loadGithubSettings();
             await initDB();
             lucide.createIcons();
 
@@ -1699,29 +1642,24 @@ def build():
             const saveBtn = document.querySelector('#machine-modal .btn-accent');
             const originalBtnText = saveBtn.textContent;
             saveBtn.disabled = true;
-            saveBtn.textContent = 'Saving & Syncing...';
+            saveBtn.textContent = 'Saving...';
 
             // We use an async self-invoking function block to handle promises
             (async () => {{
                 try {{
+                    let imagePayload = null;
                     if (urlInputVal) {{
                         machineObj.image = urlInputVal;
                     }} else if (previewSrc && previewSrc.startsWith('data:image')) {{
-                        // It's a new uploaded file
-                        if (ghSettings && ghSettings.token && ghSettings.username && ghSettings.repo) {{
-                            // Upload directly to GitHub images/ folder!
-                            const parts = previewSrc.split(',');
-                            const ext = previewSrc.split(';')[0].split('/')[1] || 'jpg';
-                            const imagePath = `images/${{code}}.${{ext}}`;
-                            const rawBase64 = parts[1];
-
-                            await commitToGithub(imagePath, rawBase64, `Upload photo for ${{code}}`);
-                            // Reference it relatively in the dataset
-                            machineObj.image = `./images/${{code}}.${{ext}}`;
-                        }} else {{
-                            // Fallback to storing in local storage
-                            machineObj.image = previewSrc;
-                        }}
+                        const parts = previewSrc.split(',');
+                        const ext = previewSrc.split(';')[0].split('/')[1] || 'jpg';
+                        const rawBase64 = parts[1];
+                        imagePayload = {{
+                            filename: `${{code}}.${{ext}}`,
+                            base64: rawBase64
+                        }};
+                        // Save it relatively under the images folder
+                        machineObj.image = `images/${{code}}.${{ext}}`;
                     }} else if (editCode) {{
                         // reuse existing image if editing
                         const existing = machines.find(x => x.id === editCode);
@@ -1745,24 +1683,45 @@ def build():
                         machines.unshift(machineObj);
                     }}
 
+                    // Try to save to local Python server
+                    let saveServerSuccessful = false;
+                    try {{
+                        const payload = {{
+                            machines: machines,
+                            image: imagePayload
+                        }};
+                        const response = await fetch('/api/save', {{
+                            method: 'POST',
+                            headers: {{ 'Content-Type': 'application/json' }},
+                            body: JSON.stringify(payload)
+                        }});
+                        if (response.ok) {{
+                            saveServerSuccessful = true;
+                        }}
+                    }} catch (e) {{
+                        console.warn("Could not save to local server. Storing in local storage only.", e);
+                    }}
+
+                    if (!saveServerSuccessful) {{
+                        // Fallback: If save server failed, keep the raw base64 image in localStorage
+                        if (previewSrc && previewSrc.startsWith('data:image')) {{
+                            machineObj.image = previewSrc;
+                        }}
+                    }}
+
                     saveToLocalStorage();
 
-                    // Sync the machines.json database to GitHub!
-                    if (ghSettings && ghSettings.token && ghSettings.username && ghSettings.repo) {{
-                        const dbStr = JSON.stringify(machines, null, 2);
-                        // Safe base64 encoding supporting utf-8 characters
-                        const encodedData = btoa(unescape(encodeURIComponent(dbStr)));
-                        await commitToGithub('machines.json', encodedData, `Update database entry for ${{code}}`);
-                        alert('Machine saved and synced to GitHub successfully!');
+                    if (saveServerSuccessful) {{
+                        alert('Machine saved and rebuilt locally! You can now commit and push the files to make them visible online.');
                     }} else {{
-                        alert('Machine saved locally. Configure GitHub Sync in settings to commit changes to git.');
+                        alert('Saved to browser cache. Run "python3 server.py" to save permanently to local files.');
                     }}
 
                     closeModal('machine-modal');
                     renderGrid();
                 }} catch (err) {{
                     console.error(err);
-                    alert('Error syncing to GitHub: ' + err.message + '\n\nYour changes were saved locally.');
+                    alert('Error saving machine: ' + err.message);
                     closeModal('machine-modal');
                     renderGrid();
                 }} finally {{
@@ -1777,6 +1736,19 @@ def build():
                 machines = machines.filter(x => x.id !== code);
                 saveToLocalStorage();
                 renderGrid();
+
+                // Save updated list to server
+                (async () => {{
+                    try {{
+                        await fetch('/api/save', {{
+                            method: 'POST',
+                            headers: {{ 'Content-Type': 'application/json' }},
+                            body: JSON.stringify({{ machines: machines, image: null }})
+                        }});
+                    }} catch(e) {{
+                        console.warn("Could not sync deletion to local server.");
+                    }}
+                }})();
             }}
         }}
 

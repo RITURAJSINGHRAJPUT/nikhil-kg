@@ -21,7 +21,7 @@ def parse_bakery_machines(wb_path):
             continue
         
         # Check if row is headers or section title
-        if "Machine" in str(row[1]) or "Sr." in str(row[0]):
+        if str(row[0]).strip().lower() == "sr." or str(row[1]).strip().lower() == "machine / item":
             continue
             
         code = str(row[4]).strip() if row[4] else f"SUR-BKY-{row_idx-2:03d}"

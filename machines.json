@@ -1,5 +1,15 @@
 [
   {
+    "id": "SUR-BKY-TEST",
+    "category": "Bakery Machine List",
+    "name": "Test Local Server Machine",
+    "qty": "2",
+    "brand": "Antigravity",
+    "details": "Equipment Code: SUR-BKY-TEST. Brand: Antigravity. Capacity: 500kg. Purchase Date: 2026-07-17",
+    "capacity": "500kg",
+    "purchase_date": "2026-07-17"
+  },
+  {
     "id": "SUR-BKY-001",
     "category": "Bakery Machine List",
     "name": "Dough Sheeter",
@@ -7,7 +17,8 @@
     "brand": "-",
     "capacity": "-",
     "purchase_date": "-",
-    "details": "Equipment Code: SUR-BKY-001. Brand: -. Capacity: -. Purchase Date: -"
+    "details": "Equipment Code: SUR-BKY-001. Brand: -. Capacity: -. Purchase Date: -",
+    "image": "images/SUR-BKY-001 copy.jpeg"
   },
   {
     "id": "SUR-BKY-002",
@@ -17,7 +28,8 @@
     "brand": "-",
     "capacity": "-",
     "purchase_date": "-",
-    "details": "Equipment Code: SUR-BKY-002. Brand: -. Capacity: -. Purchase Date: -"
+    "details": "Equipment Code: SUR-BKY-002. Brand: -. Capacity: -. Purchase Date: -",
+    "image": "images/SUR-BKY-002.jpeg"
   },
   {
     "id": "SUR-BKY-003",
@@ -27,7 +39,8 @@
     "brand": "-",
     "capacity": "-",
     "purchase_date": "-",
-    "details": "Equipment Code: SUR-BKY-003. Brand: -. Capacity: -. Purchase Date: -"
+    "details": "Equipment Code: SUR-BKY-003. Brand: -. Capacity: -. Purchase Date: -",
+    "image": "images/SUR-BKY-003.jpeg"
   },
   {
     "id": "SUR-BKY-004",
@@ -37,7 +50,8 @@
     "brand": "-",
     "capacity": "-",
     "purchase_date": "-",
-    "details": "Equipment Code: SUR-BKY-004. Brand: -. Capacity: -. Purchase Date: -"
+    "details": "Equipment Code: SUR-BKY-004. Brand: -. Capacity: -. Purchase Date: -",
+    "image": "images/SUR-BKY-004.png"
   },
   {
     "id": "SUR-BKY-005",
@@ -47,7 +61,8 @@
     "brand": "-",
     "capacity": "-",
     "purchase_date": "-",
-    "details": "Equipment Code: SUR-BKY-005. Brand: -. Capacity: -. Purchase Date: -"
+    "details": "Equipment Code: SUR-BKY-005. Brand: -. Capacity: -. Purchase Date: -",
+    "image": "images/SUR-BKY-005.png"
   },
   {
     "id": "SUR-BKY-006",
@@ -57,7 +72,8 @@
     "brand": "-",
     "capacity": "-",
     "purchase_date": "-",
-    "details": "Equipment Code: SUR-BKY-006. Brand: -. Capacity: -. Purchase Date: -"
+    "details": "Equipment Code: SUR-BKY-006. Brand: -. Capacity: -. Purchase Date: -",
+    "image": "images/SUR-BKY-006.png"
   },
   {
     "id": "SUR-BKY-007",
@@ -67,7 +83,8 @@
     "brand": "-",
     "capacity": "-",
     "purchase_date": "-",
-    "details": "Equipment Code: SUR-BKY-007. Brand: -. Capacity: -. Purchase Date: -"
+    "details": "Equipment Code: SUR-BKY-007. Brand: -. Capacity: -. Purchase Date: -",
+    "image": "images/SUR-BKY-007.png"
   },
   {
     "id": "SUR-BKY-008",
@@ -77,7 +94,30 @@
     "brand": "-",
     "capacity": "-",
     "purchase_date": "-",
-    "details": "Equipment Code: SUR-BKY-008. Brand: -. Capacity: -. Purchase Date: -"
+    "details": "Equipment Code: SUR-BKY-008. Brand: -. Capacity: -. Purchase Date: -",
+    "image": "images/SUR-BKY-008.png"
+  },
+  {
+    "id": "SUR-BKY-009",
+    "category": "Bakery Machine List",
+    "name": "Spar Machine",
+    "qty": "1",
+    "brand": "-",
+    "capacity": "-",
+    "purchase_date": "-",
+    "details": "Equipment Code: SUR-BKY-009. Brand: -. Capacity: -. Purchase Date: -",
+    "image": "images/SUR-BKY-009.png"
+  },
+  {
+    "id": "SUR-BKY-010",
+    "category": "Bakery Machine List",
+    "name": "Chocolate Tempering Machine",
+    "qty": "1",
+    "brand": "-",
+    "capacity": "-",
+    "purchase_date": "-",
+    "details": "Equipment Code: SUR-BKY-010. Brand: -. Capacity: -. Purchase Date: -",
+    "image": "images/SUR-BKY-010.jpeg"
   },
   {
     "id": "SUR-BKY-011",
@@ -87,7 +127,8 @@
     "brand": "-",
     "capacity": "-",
     "purchase_date": "-",
-    "details": "Equipment Code: SUR-BKY-011. Brand: -. Capacity: -. Purchase Date: -"
+    "details": "Equipment Code: SUR-BKY-011. Brand: -. Capacity: -. Purchase Date: -",
+    "image": "images/SUR-BKY-011.jpeg"
   },
   {
     "id": "SUR-BKY-012",
@@ -97,7 +138,41 @@
     "brand": "-",
     "capacity": "-",
     "purchase_date": "-",
-    "details": "Equipment Code: SUR-BKY-012. Brand: -. Capacity: -. Purchase Date: -"
+    "details": "Equipment Code: SUR-BKY-012. Brand: -. Capacity: -. Purchase Date: -",
+    "image": "images/SUR-BKY-012.png"
+  },
+  {
+    "id": "SUR-BKY-013",
+    "category": "Bakery Machine List",
+    "name": "Ninja Ice Cream Machine",
+    "qty": "1",
+    "brand": "-",
+    "capacity": "-",
+    "purchase_date": "-",
+    "details": "Equipment Code: SUR-BKY-013. Brand: -. Capacity: -. Purchase Date: -",
+    "image": "images/SUR-BKY-013.png"
+  },
+  {
+    "id": "SUR-BKY-014",
+    "category": "Bakery Machine List",
+    "name": "Ice Cream Churn Machine (Taylor)",
+    "qty": "1",
+    "brand": "-",
+    "capacity": "-",
+    "purchase_date": "-",
+    "details": "Equipment Code: SUR-BKY-014. Brand: -. Capacity: -. Purchase Date: -",
+    "image": "images/SUR-BKY-014.jpeg"
+  },
+  {
+    "id": "SUR-BKY-015",
+    "category": "Bakery Machine List",
+    "name": "Waffle Machine",
+    "qty": "2",
+    "brand": "-",
+    "capacity": "-",
+    "purchase_date": "-",
+    "details": "Equipment Code: SUR-BKY-015. Brand: -. Capacity: -. Purchase Date: -",
+    "image": "images/SUR-BKY-015.jpeg"
   },
   {
     "id": "SUR-BKY-016",
@@ -107,7 +182,8 @@
     "brand": "-",
     "capacity": "-",
     "purchase_date": "-",
-    "details": "Equipment Code: SUR-BKY-016. Brand: -. Capacity: -. Purchase Date: -"
+    "details": "Equipment Code: SUR-BKY-016. Brand: -. Capacity: -. Purchase Date: -",
+    "image": "images/SUR-BKY-016.png"
   },
   {
     "id": "SUR-BKY-017",
@@ -117,7 +193,8 @@
     "brand": "-",
     "capacity": "-",
     "purchase_date": "-",
-    "details": "Equipment Code: SUR-BKY-017. Brand: -. Capacity: -. Purchase Date: -"
+    "details": "Equipment Code: SUR-BKY-017. Brand: -. Capacity: -. Purchase Date: -",
+    "image": "images/SUR-BKY-017.png"
   },
   {
     "id": "SUR-BKY-018",
@@ -127,7 +204,8 @@
     "brand": "-",
     "capacity": "-",
     "purchase_date": "-",
-    "details": "Equipment Code: SUR-BKY-018. Brand: -. Capacity: -. Purchase Date: -"
+    "details": "Equipment Code: SUR-BKY-018. Brand: -. Capacity: -. Purchase Date: -",
+    "image": "images/SUR-BKY-018.png"
   },
   {
     "id": "SUR-BKY-019",
@@ -137,7 +215,8 @@
     "brand": "-",
     "capacity": "-",
     "purchase_date": "-",
-    "details": "Equipment Code: SUR-BKY-019. Brand: -. Capacity: -. Purchase Date: -"
+    "details": "Equipment Code: SUR-BKY-019. Brand: -. Capacity: -. Purchase Date: -",
+    "image": "images/SUR-BKY-019.png"
   },
   {
     "id": "SUR-BKY-020",
@@ -147,7 +226,19 @@
     "brand": "-",
     "capacity": "-",
     "purchase_date": "-",
-    "details": "Equipment Code: SUR-BKY-020. Brand: -. Capacity: -. Purchase Date: -"
+    "details": "Equipment Code: SUR-BKY-020. Brand: -. Capacity: -. Purchase Date: -",
+    "image": "images/SUR-BKY-020.png"
+  },
+  {
+    "id": "SUR-BKY-021",
+    "category": "Bakery Machine List",
+    "name": "Churros Machine",
+    "qty": "1",
+    "brand": "-",
+    "capacity": "-",
+    "purchase_date": "-",
+    "details": "Equipment Code: SUR-BKY-021. Brand: -. Capacity: -. Purchase Date: -",
+    "image": "images/SUR-BKY-021.png"
   },
   {
     "id": "SUR-BKY-022",
@@ -157,7 +248,8 @@
     "brand": "-",
     "capacity": "-",
     "purchase_date": "-",
-    "details": "Equipment Code: SUR-BKY-022. Brand: -. Capacity: -. Purchase Date: -"
+    "details": "Equipment Code: SUR-BKY-022. Brand: -. Capacity: -. Purchase Date: -",
+    "image": "images/SUR-BKY-022.png"
   },
   {
     "id": "SUR-BKY-023",
@@ -167,7 +259,19 @@
     "brand": "-",
     "capacity": "-",
     "purchase_date": "-",
-    "details": "Equipment Code: SUR-BKY-023. Brand: -. Capacity: -. Purchase Date: -"
+    "details": "Equipment Code: SUR-BKY-023. Brand: -. Capacity: -. Purchase Date: -",
+    "image": "images/SUR-BKY-023.png"
+  },
+  {
+    "id": "SUR-BKY-024",
+    "category": "Bakery Machine List",
+    "name": "Swirl Freeze Machine",
+    "qty": "1",
+    "brand": "-",
+    "capacity": "-",
+    "purchase_date": "-",
+    "details": "Equipment Code: SUR-BKY-024. Brand: -. Capacity: -. Purchase Date: -",
+    "image": "images/SUR-BKY-024.png"
   },
   {
     "id": "SUR-BKY-025",
@@ -177,7 +281,8 @@
     "brand": "-",
     "capacity": "-",
     "purchase_date": "-",
-    "details": "Equipment Code: SUR-BKY-025. Brand: -. Capacity: -. Purchase Date: -"
+    "details": "Equipment Code: SUR-BKY-025. Brand: -. Capacity: -. Purchase Date: -",
+    "image": "images/SUR-BKY-025.jpeg"
   },
   {
     "id": "SUR-PRP-002",
