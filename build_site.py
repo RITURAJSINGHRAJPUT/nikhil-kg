@@ -918,6 +918,9 @@ def build():
                 </div>
             </div>
             <div class="header-actions">
+                <button class="btn btn-outline" onclick="openGithubSettings()" title="Configure GitHub Sync">
+                    <i data-lucide="settings"></i> GitHub Sync
+                </button>
                 <button class="btn btn-primary" onclick="openAddModal()">
                     <i data-lucide="plus"></i> Add Machine
                 </button>
@@ -1060,6 +1063,41 @@ def build():
         </div>
     </div>
 
+    <!-- ==================== GITHUB SETTINGS MODAL ==================== -->
+    <div class="modal-overlay" id="github-settings-modal">
+        <div class="modal-card" style="max-width: 420px;">
+            <div class="modal-header">
+                <h3>GitHub Sync Settings</h3>
+                <button class="modal-close" onclick="closeModal('github-settings-modal')">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.5rem; line-height: 1.4;">
+                    Configure GitHub Sync to automatically commit uploaded photos and database changes directly to your repository.
+                </p>
+                <div class="form-group" style="margin-bottom: 0.75rem;">
+                    <label for="gh-username">GitHub Username / Organization</label>
+                    <input type="text" id="gh-username" class="form-input" placeholder="e.g. RITURAJSINGHRAJPUT">
+                </div>
+                <div class="form-group" style="margin-bottom: 0.75rem;">
+                    <label for="gh-repo">Repository Name</label>
+                    <input type="text" id="gh-repo" class="form-input" placeholder="e.g. nikhil-kg">
+                </div>
+                <div class="form-group" style="margin-bottom: 0.75rem;">
+                    <label for="gh-branch">Branch</label>
+                    <input type="text" id="gh-branch" class="form-input" value="main">
+                </div>
+                <div class="form-group" style="margin-bottom: 0.75rem;">
+                    <label for="gh-token">Personal Access Token (classic or fine-grained)</label>
+                    <input type="password" id="gh-token" class="form-input" placeholder="ghp_xxxxxxxxxxxxxxxxxxxx">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-outline" onclick="closeModal('github-settings-modal')">Cancel</button>
+                <button class="btn btn-accent" onclick="saveGithubSettings()">Save Settings</button>
+            </div>
+        </div>
+    </div>
+
     <!-- ==================== QR VIEW MODAL ==================== -->
     <div class="modal-overlay" id="qr-modal">
         <div class="modal-card" style="max-width: 380px;">
@@ -1090,6 +1128,17 @@ def build():
         // Live state loaded from localStorage or fallback to initialMachines
         let machines = [];
         let currentCategory = 'All';
+        let ghSettings = null;
+
+        // Load GitHub Integration settings
+        function loadGithubSettings() {{
+            const stored = localStorage.getItem('bookends_gh_settings');
+            if (stored) {{
+                try {{
+                    ghSettings = JSON.parse(stored);
+                }} catch(e) {{}}
+            }}
+        }}
 
         // Fetch live machines.json from server first
         async function initDB() {{
@@ -1123,8 +1172,76 @@ def build():
             localStorage.setItem('bookends_machines', JSON.stringify(machines));
         }}
 
+        // Commit files to GitHub directly using REST API
+        async function commitToGithub(path, base64Content, commitMessage) {{
+            if (!ghSettings || !ghSettings.token || !ghSettings.username || !ghSettings.repo) {{
+                console.log("GitHub Sync settings are incomplete.");
+                return null;
+            }}
+
+            const url = `https://api.github.com/repos/${{ghSettings.username}}/${{ghSettings.repo}}/contents/${{path}}`;
+            const headers = {{
+                "Authorization": `token ${{ghSettings.token}}`,
+                "Content-Type": "application/json"
+            }};
+
+            let sha = null;
+            // Check if file already exists to get its SHA for update
+            try {{
+                const res = await fetch(url + `?ref=${{ghSettings.branch || 'main'}}`, {{ headers }});
+                if (res.ok) {{
+                    const data = await res.json();
+                    sha = data.sha;
+                }}
+            }} catch(e) {{}}
+
+            const body = {{
+                message: commitMessage,
+                content: base64Content,
+                branch: ghSettings.branch || 'main'
+            }};
+            if (sha) body.sha = sha;
+
+            const putRes = await fetch(url, {{
+                method: 'PUT',
+                headers: headers,
+                body: JSON.stringify(body)
+            }});
+
+            if (!putRes.ok) {{
+                const err = await putRes.json();
+                throw new Error(err.message || 'Failed to sync with GitHub');
+            }}
+            return await putRes.json();
+        }}
+
+        // GitHub settings Modal controls
+        function openGithubSettings() {{
+            loadGithubSettings();
+            if (ghSettings) {{
+                document.getElementById('gh-username').value = ghSettings.username || '';
+                document.getElementById('gh-repo').value = ghSettings.repo || '';
+                document.getElementById('gh-branch').value = ghSettings.branch || 'main';
+                document.getElementById('gh-token').value = ghSettings.token || '';
+            }}
+            document.getElementById('github-settings-modal').style.display = 'flex';
+        }}
+
+        function saveGithubSettings() {{
+            const username = document.getElementById('gh-username').value.trim();
+            const repo = document.getElementById('gh-repo').value.trim();
+            const branch = document.getElementById('gh-branch').value.trim() || 'main';
+            const token = document.getElementById('gh-token').value.trim();
+
+            ghSettings = {{ username, repo, branch, token }};
+            localStorage.setItem('bookends_gh_settings', JSON.stringify(ghSettings));
+            closeModal('github-settings-modal');
+            alert('GitHub settings saved! Auto-sync is active.');
+        }}
+
         // Check URL for Mobile Card mode
         window.addEventListener('DOMContentLoaded', async () => {{
+            loadGithubSettings();
             await initDB();
             lucide.createIcons();
 
@@ -1610,12 +1727,18 @@ def build():
             (async () => {{
                 try {{
                     let imagePayload = null;
+                    let imagePath = '';
+                    let rawBase64 = '';
+                    let isNewLocalImage = false;
+
                     if (urlInputVal) {{
                         machineObj.image = urlInputVal;
                     }} else if (previewSrc && previewSrc.startsWith('data:image')) {{
+                        isNewLocalImage = true;
                         const parts = previewSrc.split(',');
                         const ext = previewSrc.split(';')[0].split('/')[1] || 'jpg';
-                        const rawBase64 = parts[1];
+                        rawBase64 = parts[1];
+                        imagePath = `images/${{code}}.${{ext}}`;
                         imagePayload = {{
                             filename: `${{code}}.${{ext}}`,
                             base64: rawBase64
@@ -1645,7 +1768,7 @@ def build():
                         machines.unshift(machineObj);
                     }}
 
-                    // Try to save to local Python server
+                    // Mode 1: Try local python server first
                     let saveServerSuccessful = false;
                     try {{
                         const payload = {{
@@ -1661,22 +1784,36 @@ def build():
                             saveServerSuccessful = true;
                         }}
                     }} catch (e) {{
-                        console.warn("Could not save to local server. Storing in local storage only.", e);
+                        console.log("Local server save unavailable.");
                     }}
-
-                    if (!saveServerSuccessful) {{
-                        // Fallback: If save server failed, keep the raw base64 image in localStorage
-                        if (previewSrc && previewSrc.startsWith('data:image')) {{
-                            machineObj.image = previewSrc;
-                        }}
-                    }}
-
-                    saveToLocalStorage();
 
                     if (saveServerSuccessful) {{
+                        saveToLocalStorage();
                         alert('Machine saved and rebuilt locally! You can now commit and push the files to make them visible online.');
                     }} else {{
-                        alert('Saved to browser cache. Run "python3 server.py" to save permanently to local files.');
+                        // Mode 2: Fallback to GitHub Sync directly from the browser!
+                        if (ghSettings && ghSettings.token && ghSettings.username && ghSettings.repo) {{
+                            saveBtn.textContent = 'Syncing to GitHub...';
+                            // If a new local image was uploaded, commit it to GitHub repository
+                            if (isNewLocalImage && imagePath && rawBase64) {{
+                                await commitToGithub(imagePath, rawBase64, `Upload photo for ${{code}}`);
+                            }}
+
+                            // Commit updated machines.json to GitHub repository
+                            const dbStr = JSON.stringify(machines, null, 2);
+                            const encodedData = btoa(unescape(encodeURIComponent(dbStr)));
+                            await commitToGithub('machines.json', encodedData, `Update database entry for ${{code}}`);
+                            
+                            saveToLocalStorage();
+                            alert('Machine saved and synced to GitHub successfully! It will take a minute or two to update online.');
+                        }} else {{
+                            // Mode 3: Local browser cache only
+                            if (previewSrc && previewSrc.startsWith('data:image')) {{
+                                machineObj.image = previewSrc;
+                            }}
+                            saveToLocalStorage();
+                            alert('Saved to browser cache. Configure GitHub Sync in settings to sync changes online without running a script.');
+                        }}
                     }}
 
                     closeModal('machine-modal');
@@ -1699,16 +1836,31 @@ def build():
                 saveToLocalStorage();
                 renderGrid();
 
-                // Save updated list to server
                 (async () => {{
+                    // Try local server first
+                    let localSuccess = false;
                     try {{
-                        await fetch('/api/save', {{
+                        const res = await fetch('/api/save', {{
                             method: 'POST',
                             headers: {{ 'Content-Type': 'application/json' }},
                             body: JSON.stringify({{ machines: machines, image: null }})
                         }});
-                    }} catch(e) {{
-                        console.warn("Could not sync deletion to local server.");
+                        if (res.ok) localSuccess = true;
+                    }} catch(e) {{}}
+
+                    if (!localSuccess) {{
+                        // Try GitHub Sync fallback
+                        if (ghSettings && ghSettings.token && ghSettings.username && ghSettings.repo) {{
+                            try {{
+                                const dbStr = JSON.stringify(machines, null, 2);
+                                const encodedData = btoa(unescape(encodeURIComponent(dbStr)));
+                                await commitToGithub('machines.json', encodedData, `Delete entry for ${{code}}`);
+                                alert('Machine deleted and synced to GitHub successfully!');
+                            }} catch(err) {{
+                                console.error(err);
+                                alert('Deleted locally. Failed to sync to GitHub: ' + err.message);
+                            }}
+                        }}
                     }}
                 }})();
             }}
