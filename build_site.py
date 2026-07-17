@@ -28,6 +28,9 @@ def build():
         if m_id in image_mapping:
             machine['image'] = image_mapping[m_id]
 
+    # Filter out machines that do not have an image
+    machines = [m for m in machines if m.get('image')]
+
     # Save the updated machines back to machines.json to keep it updated
     with open('machines.json', 'w', encoding='utf-8') as f:
         json.dump(machines, f, indent=2, ensure_ascii=False)
@@ -981,12 +984,6 @@ def build():
                 <!-- Fields populated dynamically -->
             </table>
         </div>
-        <div class="mobile-footer">
-            <div>Scan → is machine ki poori detail + photo</div>
-            <a href="?" class="back-to-dashboard-btn" id="m-back-btn">
-                <i data-lucide="layout-dashboard"></i> Open Dashboard
-            </a>
-        </div>
     </div>
 
     <!-- ==================== ADD / EDIT MACHINE MODAL ==================== -->
@@ -1094,49 +1091,6 @@ def build():
         let machines = [];
         let currentCategory = 'All';
 
-        function mergeMachines(sourceList) {{
-            const stored = localStorage.getItem('bookends_machines');
-            if (!stored) {{
-                return [...sourceList];
-            }}
-            try {{
-                const localMachines = JSON.parse(stored);
-                const localMap = {{}};
-                localMachines.forEach(m => {{
-                    localMap[m.id] = m;
-                }});
-                
-                const merged = [];
-                sourceList.forEach(srcM => {{
-                    const localM = localMap[srcM.id];
-                    if (localM) {{
-                        // Merge: keep local edits but update/fallback to source properties
-                        const mergedM = {{ ...srcM, ...localM }};
-                        // If the local entry doesn't have an image but the source entry does, take it
-                        if (!localM.image && srcM.image) {{
-                            mergedM.image = srcM.image;
-                        }}
-                        merged.push(mergedM);
-                    }} else {{
-                        // New machine from source
-                        merged.push(srcM);
-                    }}
-                }});
-                
-                // Keep any custom machines added locally (not in source list)
-                const sourceIds = new Set(sourceList.map(m => m.id));
-                localMachines.forEach(localM => {{
-                    if (!sourceIds.has(localM.id)) {{
-                        merged.push(localM);
-                    }}
-                }});
-                
-                return merged;
-            }} catch(e) {{
-                return [...sourceList];
-            }}
-        }}
-
         // Fetch live machines.json from server first
         async function initDB() {{
             try {{
@@ -1144,7 +1098,7 @@ def build():
                 if (response.ok) {{
                     const freshData = await response.json();
                     if (Array.isArray(freshData) && freshData.length > 0) {{
-                        machines = mergeMachines(freshData);
+                        machines = freshData.filter(m => m.image);
                         saveToLocalStorage();
                         return;
                     }}
@@ -1153,8 +1107,16 @@ def build():
                 console.log("Could not load machines.json dynamically. Using local cache/fallback.");
             }}
 
-            machines = mergeMachines(initialMachines);
-            saveToLocalStorage();
+            const stored = localStorage.getItem('bookends_machines');
+            if (stored) {{
+                try {{
+                    machines = JSON.parse(stored).filter(m => m.image);
+                }} catch(e) {{
+                    machines = initialMachines.filter(m => m.image);
+                }}
+            }} else {{
+                machines = initialMachines.filter(m => m.image);
+            }}
         }}
 
         function saveToLocalStorage() {{
